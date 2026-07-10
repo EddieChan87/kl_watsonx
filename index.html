@@ -297,21 +297,6 @@
   </div>
 </div>
 
-<!-- ── Name prompt modal (shown after game over) ── -->
-<div class="lb-backdrop hidden" id="nameModal">
-  <div class="lb-card">
-    <h3>Submit Score</h3>
-    <div class="lb-status" id="nameStatus"></div>
-    <div class="lb-name-form">
-      <label for="playerNameInput">Your name (shown on leaderboard)</label>
-      <input id="playerNameInput" type="text" maxlength="20" placeholder="e.g. Ahmad, Priya…" autocomplete="off" />
-    </div>
-    <div class="lb-btns">
-      <button class="lb-btn-primary" id="nameSubmit">Submit →</button>
-      <button class="lb-btn-ghost"   id="nameSkip">Skip</button>
-    </div>
-  </div>
-</div>
 
 <div id="wrap">
   <canvas id="canvas"></canvas>
@@ -334,7 +319,21 @@
     <div class="big" id="finalScore">0</div>
     <div class="new-best" id="newBest" style="display:none">🏆 NEW HIGH SCORE!</div>
     <div class="detail" id="goDetail"></div>
-    <button class="play-btn" id="restartBtn">↺ Try Again</button>
+
+    <!-- Name + submit inline (only shown when leaderboard is configured) -->
+    <div id="goSubmitArea" style="display:none;width:100%;max-width:260px;flex-direction:column;gap:8px">
+      <input id="playerNameInput" type="text" maxlength="20" placeholder="Enter your name…"
+        autocomplete="off"
+        style="background:#262626;border:1px solid #393939;border-radius:4px;color:#fff;
+               font-size:15px;font-family:inherit;padding:8px 10px;outline:none;width:100%;
+               box-sizing:border-box;" />
+      <button class="play-btn" id="nameSubmit" style="width:100%;padding:10px 0">
+        🏆 Submit &amp; See Leaderboard
+      </button>
+      <div id="nameStatus" style="font-size:11px;color:#8d8d8d;text-align:center;min-height:14px"></div>
+    </div>
+
+    <button class="play-btn" id="restartBtn" style="display:none">↺ Try Again</button>
   </div>
 </div>
 
@@ -994,8 +993,8 @@ function endGame() {
     : `Best score: ${hiScore} — can you beat it?`;
 
   gameOverScr.style.display = 'flex';
-  // Prompt player to submit score
-  setTimeout(() => showNamePrompt(score), 600);
+  // Show name input inline on the game-over card
+  setTimeout(() => showNamePrompt(score), 400);
 }
 
 document.getElementById('startBtn').addEventListener('click',   startGame);
@@ -1082,44 +1081,56 @@ async function openLeaderboard() {
 }
 
 function showNamePrompt(finalScore) {
-  if (LB_BIN_ID === 'PASTE_YOUR_BIN_ID_HERE') return; // not configured
-  const modal = document.getElementById('nameModal');
-  const input = document.getElementById('playerNameInput');
-  const status = document.getElementById('nameStatus');
-  const submitBtn = document.getElementById('nameSubmit');
+  const submitArea = document.getElementById('goSubmitArea');
+  const restartBtn = document.getElementById('restartBtn');
+  const input      = document.getElementById('playerNameInput');
+  const status     = document.getElementById('nameStatus');
+  const submitBtn  = document.getElementById('nameSubmit');
+
+  if (LB_BIN_ID === 'PASTE_YOUR_BIN_ID_HERE') {
+    // Leaderboard not configured — just show Try Again
+    restartBtn.style.display = 'block';
+    return;
+  }
+
+  // Pre-fill saved name, reset state
   input.value = playerName;
-  status.textContent = `Your score: ${finalScore}`;
+  status.textContent = '';
   submitBtn.disabled = false;
-  modal.classList.remove('hidden');
-  input.focus();
+  submitBtn.textContent = '🏆 Submit & See Leaderboard';
+
+  submitArea.style.display = 'flex';
+  restartBtn.style.display = 'none';
+  setTimeout(() => input.focus(), 50);
 }
 
-// Name modal — submit
+// Submit score — inline in game-over card
 document.getElementById('nameSubmit').addEventListener('click', async () => {
-  const input = document.getElementById('playerNameInput');
-  const name  = input.value.trim();
-  if (!name) { input.focus(); return; }
+  const input     = document.getElementById('playerNameInput');
+  const name      = input.value.trim();
   const submitBtn = document.getElementById('nameSubmit');
   const status    = document.getElementById('nameStatus');
+
+  if (!name) { input.focus(); return; }
+
   submitBtn.disabled = true;
   status.textContent = 'Submitting…';
   playerName = name;
   localStorage.setItem('wx_name', name);
+
   try {
     await submitScore(name, score);
     status.textContent = '✅ Score submitted!';
-    setTimeout(() => {
-      document.getElementById('nameModal').classList.add('hidden');
-    }, 1200);
+    // Hide submit area, show leaderboard modal with fresh scores
+    setTimeout(async () => {
+      document.getElementById('goSubmitArea').style.display = 'none';
+      document.getElementById('restartBtn').style.display = 'block';
+      await openLeaderboard();
+    }, 700);
   } catch(e) {
-    status.textContent = '⚠️ Submit failed. Check connection.';
+    status.textContent = '⚠️ Submit failed — check your connection.';
     submitBtn.disabled = false;
   }
-});
-
-// Name modal — skip
-document.getElementById('nameSkip').addEventListener('click', () => {
-  document.getElementById('nameModal').classList.add('hidden');
 });
 
 // Leaderboard modal — refresh
