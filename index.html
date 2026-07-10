@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Bob Dodge — Malaysia 2026 IBMer watsonx Challenge</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    color: #fff;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── HUD ── */
+  #hud {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #8d8d8d;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+  #hud span { color: #fff; font-weight: 700; font-size: 20px; display: block; margin-top: 2px; }
+  #hud .lbl { text-align: center; }
+  #hud .best span { color: #f1c21b; }
+
+  /* ── Canvas ── */
+  #canvas {
+    border: 2px solid #262626;
+    border-radius: 8px;
+    display: block;
+    background: #111;
+    touch-action: none;
+  }
+
+  /* ── Controls hint ── */
+  #controls {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #525252;
+    text-align: center;
+    letter-spacing: .04em;
+  }
+
+  /* ── Overlays ── */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(0,0,0,.88);
+    border-radius: 6px;
+  }
+  .overlay h2 {
+    font-size: clamp(22px, 5vw, 34px);
+    font-weight: 800;
+    color: #0f62fe;
+    letter-spacing: -0.5px;
+    text-align: center;
+  }
+  .overlay .big { font-size: clamp(48px, 12vw, 80px); font-weight: 800; color: #fff; line-height: 1; }
+  .overlay .detail { font-size: 13px; color: #8d8d8d; text-align: center; max-width: 260px; line-height: 1.6; }
+  .overlay .new-best { color: #f1c21b; font-weight: 700; font-size: 15px; }
+
+  .play-btn {
+    background: #0f62fe;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 36px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .02em;
+    transition: background .15s, transform .1s;
+    font-family: inherit;
+  }
+  .play-btn:hover { background: #0353e9; }
+  .play-btn:active { transform: scale(.96); }
+
+  /* canvas wrapper */
+  #wrap { position: relative; }
+
+  footer {
+    margin-top: 14px;
+    font-size: 11px;
+    color: #393939;
+    letter-spacing: .05em;
+  }
+
+  /* ── Music toggle ── */
+  #musicToggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #8d8d8d;
+    font-size: 18px;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    user-select: none;
+  }
+  #musicToggle:hover  { background: rgba(255,255,255,0.13); color: #fff; }
+  #musicToggle.muted  { color: #525252; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="lbl">Score<span id="scoreVal">0</span></div>
+  <div class="lbl">Level<span id="levelVal">1</span></div>
+  <div class="lbl best">Best<span id="bestVal">0</span></div>
+</div>
+
+<div id="wrap">
+  <canvas id="canvas"></canvas>
+  <button id="musicToggle" title="Toggle music (M)">🔊</button>
+
+  <!-- Start overlay -->
+  <div class="overlay" id="startScreen">
+    <div style="font-size:52px;line-height:1">🤖</div>
+    <h2>Bob Dodge</h2>
+    <div style="font-size:12px;color:#4589ff;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:-8px">watsonx Challenge</div>
+    <div class="detail">Help Bob dodge the data bugs.<br>Survive as long as you can.<br><strong style="color:#fff">Highest score wins the prize! 🏆</strong></div>
+    <button class="play-btn" id="startBtn">▶ Play as Bob</button>
+    <div class="detail" style="font-size:11px;color:#525252">← → keys &nbsp;·&nbsp; tap left / right</div>
+  </div>
+
+  <!-- Game over overlay -->
+  <div class="overlay" id="gameOverScreen" style="display:none">
+    <div style="font-size:40px;line-height:1">🤖💥</div>
+    <h2>Bob Crashed!</h2>
+    <div class="big" id="finalScore">0</div>
+    <div class="new-best" id="newBest" style="display:none">🏆 NEW HIGH SCORE!</div>
+    <div class="detail" id="goDetail"></div>
+    <button class="play-btn" id="restartBtn">↺ Try Again</button>
+  </div>
+</div>
+
+<div id="controls">← → Arrow Keys &nbsp;|&nbsp; Tap Left / Right side of screen</div>
+
+<footer>Malaysia &nbsp;|&nbsp; 2026 IBMer watsonx Challenge in-person experience</footer>
+
+<script>
+// ── Audio Engine ──────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let musicPlaying = false;
+let musicTicker = null;
+let musicEnabled = true;   // toggled by the 🔊 button
+
+// Always returns a live, resumed AudioContext
+function getAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Master gain node — rebuilt if context was recreated
+function getMaster() {
+  const ac = getAudio();
+  if (!masterGain || masterGain.context !== ac) {
+    masterGain = ac.createGain();
+    masterGain.gain.value = 0.22;
+    masterGain.connect(ac.destination);
+  }
+  return masterGain;
+}
+
+// ── SFX: move blip ────────────────────────────────────────────
+function playMoveSound(dir) {
+  if (!musicEnabled) return;
+  try {
+    const ac = getAudio();
+    const osc  = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(getMaster());
+    osc.type = 'square';
+    const freq = dir === 'left' ? 320 : 480;
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.4, ac.currentTime + 0.07);
+    gain.gain.setValueAtTime(0.35, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.1);
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + 0.11);
+  } catch(e) {}
+}
+
+// ── SFX: crash ────────────────────────────────────────────────
+function playCrashSound() {
+  if (!musicEnabled) return;
+  try {
+    const ac = getAudio();
+    // White-noise burst
+    const bufLen = ac.sampleRate * 0.35;
+    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const src  = ac.createBufferSource();
+    const gain = ac.createGain();
+    src.buffer = buf;
+    src.connect(gain);
+    gain.connect(getMaster());
+    gain.gain.setValueAtTime(0.9, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
+    src.start(ac.currentTime);
+
+    // Falling pitch whine
+    const osc  = ac.createOscillator();
+    const og   = ac.createGain();
+    osc.connect(og); og.connect(getMaster());
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(400, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.4);
+    og.gain.setValueAtTime(0.4, ac.currentTime);
+    og.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.4);
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + 0.4);
+  } catch(e) {}
+}
+
+// ── Background music ──────────────────────────────────────────
+// Chiptune-style drum + bassline + arp using Web Audio
+let musicScheduled = false;
+let musicStartTime = 0;
+const BPM   = 138;
+const STEP  = 60 / BPM / 4;   // 16th-note duration in seconds
+
+// 16-step patterns (1 = hit)
+const KICK_PAT  = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
+const SNARE_PAT = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
+const HAT_PAT   = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0];
+const BASS_NOTES= [55, 55, 0, 0,  73, 73, 0, 0,  49, 49, 0, 0,  65, 65, 0, 0];  // Hz
+const ARP_NOTES = [220, 277, 330, 440, 330, 277, 220, 0,
+                   233, 293, 349, 466, 349, 293, 233, 0];
+
+function playKick(t) {
+  try {
+    const ac = getAudio();
+    const osc  = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(getMaster());
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.exponentialRampToValueAtTime(28, t + 0.18);
+    gain.gain.setValueAtTime(1.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.start(t); osc.stop(t + 0.25);
+  } catch(e) {}
+}
+
+function playSnare(t) {
+  try {
+    const ac = getAudio();
+    const bufLen = Math.floor(ac.sampleRate * 0.12);
+    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+    const src  = ac.createBufferSource();
+    const gain = ac.createGain();
+    src.buffer = buf;
+    src.connect(gain); gain.connect(getMaster());
+    gain.gain.setValueAtTime(0.7, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    src.start(t);
+  } catch(e) {}
+}
+
+function playHihat(t) {
+  try {
+    const ac = getAudio();
+    const bufLen = Math.floor(ac.sampleRate * 0.04);
+    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const src    = ac.createBufferSource();
+    const filter = ac.createBiquadFilter();
+    const gain   = ac.createGain();
+    filter.type = 'highpass'; filter.frequency.value = 7000;
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(getMaster());
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    src.start(t);
+  } catch(e) {}
+}
+
+function playBass(t, freq) {
+  try {
+    const ac = getAudio();
+    const osc  = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(getMaster());
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + STEP * 1.8);
+    osc.start(t); osc.stop(t + STEP * 2);
+  } catch(e) {}
+}
+
+function playArp(t, freq) {
+  try {
+    const ac = getAudio();
+    const osc  = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(getMaster());
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + STEP * 0.7);
+    osc.start(t); osc.stop(t + STEP * 0.8);
+  } catch(e) {}
+}
+
+// Schedule one full 16-step bar ahead of time
+function scheduleBar(barStartTime) {
+  for (let s = 0; s < 16; s++) {
+    const t = barStartTime + s * STEP;
+    if (KICK_PAT[s])  playKick(t);
+    if (SNARE_PAT[s]) playSnare(t);
+    if (HAT_PAT[s])   playHihat(t);
+    if (BASS_NOTES[s]) playBass(t, BASS_NOTES[s]);
+    if (ARP_NOTES[s])  playArp(t, ARP_NOTES[s]);
+  }
+}
+
+// Rolling scheduler — keeps ~2 bars ahead
+let nextBarTime = 0;
+function musicTick() {
+  if (!musicPlaying) return;
+  const ac = getAudio();          // also calls resume() if suspended
+  const lookahead = 0.35;
+  while (nextBarTime < ac.currentTime + lookahead) {
+    scheduleBar(nextBarTime);
+    nextBarTime += 16 * STEP;
+  }
+  musicTicker = setTimeout(musicTick, 80);
+}
+
+function startMusic() {
+  if (!musicEnabled) return;
+  if (musicPlaying) return;
+  musicPlaying = true;
+  const ac = getAudio();
+  nextBarTime = ac.currentTime + 0.08;
+  musicTick();
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  clearTimeout(musicTicker);
+}
+
+function toggleMusic() {
+  musicEnabled = !musicEnabled;
+  const btn = document.getElementById('musicToggle');
+  if (musicEnabled) {
+    btn.textContent = '🔊';
+    btn.classList.remove('muted');
+    if (running) startMusic();
+  } else {
+    btn.textContent = '🔇';
+    btn.classList.add('muted');
+    stopMusic();
+  }
+}
+
+// ── Canvas setup ──────────────────────────────────────────────
+const canvas   = document.getElementById('canvas');
+const ctx      = canvas.getContext('2d');
+const startScr = document.getElementById('startScreen');
+const gameOverScr = document.getElementById('gameOverScreen');
+const scoreEl  = document.getElementById('scoreVal');
+const levelEl  = document.getElementById('levelVal');
+const bestEl   = document.getElementById('bestVal');
+const finalEl  = document.getElementById('finalScore');
+const newBestEl= document.getElementById('newBest');
+const goDetail = document.getElementById('goDetail');
+
+// Responsive canvas size
+function resize() {
+  const maxW = Math.min(window.innerWidth  - 32, 420);
+  const maxH = Math.min(window.innerHeight - 200, 600);
+  canvas.width  = maxW;
+  canvas.height = maxH;
+  COLS = 3;
+  LANE_W = canvas.width / COLS;
+}
+
+let COLS, LANE_W;
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// ── Game state ────────────────────────────────────────────────
+let score, level, lives, running, animId;
+let playerLane, playerY, playerW, playerH;
+let obstacles, particles;
+let obstacleTimer, obstacleInterval;
+let lastTime, elapsed;
+let hiScore = parseInt(localStorage.getItem('wx_hi') || '0');
+bestEl.textContent = hiScore;
+
+const COLORS = {
+  player:     '#0f62fe',
+  playerBody: '#0353e9',
+  playerGlow: 'rgba(15,98,254,0.45)',
+  eye:        '#ffffff',
+  eyePupil:   '#0f62fe',
+  obs:        ['#fa4d56','#ff832b','#be95ff','#08bdba'],
+  trail:      'rgba(15,98,254,0.15)',
+  bg:         '#0a0a0a',
+  bgStripe:   'rgba(15,98,254,0.03)',
+  lane:       'rgba(255,255,255,0.04)',
+  text:       '#ffffff',
+};
+
+function initGame() {
+  score           = 0;
+  level           = 1;
+  lives           = 1;
+  running         = true;
+  playerLane      = 1;           // 0=left,1=mid,2=right
+  playerW         = LANE_W * 0.44;
+  playerH         = playerW * 0.7;
+  playerY         = canvas.height - playerH - 24;
+  obstacles       = [];
+  particles       = [];
+  obstacleInterval= 1400;
+  obstacleTimer   = 0;
+  elapsed         = 0;
+  lastTime        = null;
+}
+
+// ── Obstacle factory ──────────────────────────────────────────
+function spawnObstacle() {
+  // Random 1 or 2 lanes blocked
+  const blocked = Math.random() < 0.35 ? 2 : 1;
+  const lanes   = shuffle([0,1,2]).slice(0, blocked);
+  const h       = LANE_W * 0.45 + Math.random() * LANE_W * 0.2;
+  const w       = LANE_W * 0.72;
+  const speed   = 3 + level * 0.55 + Math.random() * 1.2;
+  const color   = COLORS.obs[Math.floor(Math.random() * COLORS.obs.length)];
+  lanes.forEach(lane => {
+    obstacles.push({ lane, x: lane * LANE_W + (LANE_W - w) / 2, y: -h, w, h, speed, color });
+  });
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Particle burst ────────────────────────────────────────────
+function burst(x, y, color) {
+  for (let i = 0; i < 16; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 3;
+    particles.push({ x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+                     life: 1, decay: 0.04 + Math.random()*0.03, r: 3+Math.random()*4, color });
+  }
+}
+
+// ── Draw helpers ──────────────────────────────────────────────
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x,     y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y,         x + r, y);
+  ctx.closePath();
+}
+
+function drawBackground() {
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle horizontal scan-lines for a "data stream" feel
+  for (let y = (elapsed / 8) % 20; y < canvas.height; y += 20) {
+    ctx.fillStyle = COLORS.bgStripe;
+    ctx.fillRect(0, y, canvas.width, 1);
+  }
+
+  // Lane dividers
+  ctx.strokeStyle = COLORS.lane;
+  ctx.lineWidth = 1;
+  for (let i = 1; i < COLS; i++) {
+    ctx.beginPath();
+    ctx.setLineDash([10, 12]);
+    ctx.moveTo(i * LANE_W, 0);
+    ctx.lineTo(i * LANE_W, canvas.height);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+function drawPlayer() {
+  const cx = playerLane * LANE_W + LANE_W / 2;
+  const cy = playerY + playerH / 2;
+  const r  = playerW * 0.42;
+
+  // Outer glow
+  ctx.shadowColor = COLORS.playerGlow;
+  ctx.shadowBlur  = 22;
+
+  // ── Bob's round body ──
+  ctx.fillStyle = COLORS.player;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  // ── Visor band (dark strip across middle) ──
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - r*0.05, r*0.82, r*0.28, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // ── Eyes ──
+  const eyeOffX = r * 0.28;
+  const eyeY    = cy - r * 0.05;
+  const eyeR    = r * 0.16;
+  // whites
+  ctx.fillStyle = COLORS.eye;
+  ctx.beginPath(); ctx.arc(cx - eyeOffX, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + eyeOffX, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+  // pupils
+  ctx.fillStyle = '#001d6c';
+  ctx.beginPath(); ctx.arc(cx - eyeOffX + 1, eyeY + 1, eyeR*0.52, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + eyeOffX + 1, eyeY + 1, eyeR*0.52, 0, Math.PI*2); ctx.fill();
+  // shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx - eyeOffX + eyeR*0.25, eyeY - eyeR*0.3, eyeR*0.22, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + eyeOffX + eyeR*0.25, eyeY - eyeR*0.3, eyeR*0.22, 0, Math.PI*2); ctx.fill();
+
+  // ── IBM "8-bar" logo on chest ──
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  const barW = r * 0.56, barH = r * 0.065, barX = cx - barW/2, barY0 = cy + r*0.28;
+  const gaps = [0, 1, 2, 3, 4, 5, 6, 7];
+  gaps.forEach((_, i) => {
+    // draw 3 bars with gaps (simplified IBM stripe)
+    if (i < 3) {
+      const by = barY0 + i * (barH * 2.4);
+      // left gap + right gap
+      ctx.fillRect(barX,              by, barW * 0.3, barH);
+      ctx.fillRect(barX + barW * 0.38, by, barW * 0.24, barH);
+      ctx.fillRect(barX + barW * 0.7,  by, barW * 0.3, barH);
+    }
+  });
+
+  // ── Antenna ──
+  ctx.strokeStyle = '#4589ff';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx, cy - r * 1.38);
+  ctx.stroke();
+  ctx.fillStyle = '#4589ff';
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 1.42, 4, 0, Math.PI*2);
+  ctx.fill();
+
+  // ── Tiny "BOB" label beneath ──
+  ctx.fillStyle = 'rgba(69,137,255,0.8)';
+  ctx.font      = `bold ${r * 0.32}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('BOB', cx, cy + r + 4);
+}
+
+// Obstacle icons — "data bugs" threatening Bob
+const OBS_ICONS = ['🐛','⚠️','🔴','💀','🚫'];
+
+function drawObstacles() {
+  obstacles.forEach((o, idx) => {
+    // Glow
+    ctx.shadowColor = o.color;
+    ctx.shadowBlur  = 14;
+
+    // Body
+    ctx.fillStyle = o.color;
+    roundRect(o.x, o.y, o.w, o.h, 10);
+    ctx.fill();
+
+    // Darker inner panel
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    roundRect(o.x + 4, o.y + 4, o.w - 8, o.h - 8, 7);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Bug icon
+    const icon = OBS_ICONS[idx % OBS_ICONS.length];
+    ctx.font     = `${Math.min(o.w * 0.48, 26)}px system-ui`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, o.x + o.w / 2, o.y + o.h * 0.42);
+
+    // "BUG" label
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font      = `bold ${Math.min(o.w * 0.22, 11)}px system-ui`;
+    ctx.fillText('DATA BUG', o.x + o.w / 2, o.y + o.h * 0.78);
+  });
+  ctx.shadowBlur = 0;
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle   = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  // Speed trail at bottom
+  ctx.fillStyle = COLORS.trail;
+  const px = playerLane * LANE_W + (LANE_W - playerW) / 2;
+  ctx.fillRect(px + playerW*0.3, playerY + playerH, playerW*0.4, canvas.height - playerY - playerH);
+}
+
+// ── Collision ─────────────────────────────────────────────────
+function checkCollision() {
+  const px = playerLane * LANE_W + (LANE_W - playerW) / 2 + 6;
+  const pw = playerW - 12;
+  const py = playerY + 6;
+  const ph = playerH - 8;
+
+  for (const o of obstacles) {
+    if (o.y + o.h < py) continue;
+    if (o.y > py + ph)  continue;
+    if (o.x + o.w < px) continue;
+    if (o.x > px + pw)  continue;
+    return o;
+  }
+  return null;
+}
+
+// ── Main loop ─────────────────────────────────────────────────
+function loop(ts) {
+  if (!running) return;
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min(ts - lastTime, 50);
+  lastTime = ts;
+  elapsed += dt;
+
+  // Spawn
+  obstacleTimer += dt;
+  if (obstacleTimer >= obstacleInterval) {
+    obstacleTimer = 0;
+    spawnObstacle();
+    obstacleInterval = Math.max(480, obstacleInterval - 18);
+  }
+
+  // Move obstacles
+  obstacles.forEach(o => { o.y += o.speed * (dt / 16); });
+  obstacles = obstacles.filter(o => o.y < canvas.height + 20);
+
+  // Particles
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= p.decay; });
+  particles = particles.filter(p => p.life > 0);
+
+  // Score & level
+  score = Math.floor(elapsed / 100);
+  level = 1 + Math.floor(elapsed / 8000);
+  scoreEl.textContent = score;
+  levelEl.textContent = level;
+
+  // Collision
+  const hit = checkCollision();
+  if (hit) {
+    burst(playerLane * LANE_W + LANE_W/2, playerY + playerH/2, COLORS.player);
+    burst(hit.x + hit.w/2, hit.y + hit.h/2, hit.color);
+    endGame();
+    return;
+  }
+
+  // Draw
+  drawBackground();
+  drawHUD();
+  drawParticles();
+  drawObstacles();
+  drawPlayer();
+
+  animId = requestAnimationFrame(loop);
+}
+
+// ── Input ─────────────────────────────────────────────────────
+function moveLeft()  { if (playerLane > 0)       { playerLane--; playMoveSound('left');  } }
+function moveRight() { if (playerLane < COLS - 1) { playerLane++; playMoveSound('right'); } }
+
+document.addEventListener('keydown', e => {
+  if (!running) return;
+  if (e.key === 'ArrowLeft'  || e.key === 'a') moveLeft();
+  if (e.key === 'ArrowRight' || e.key === 'd') moveRight();
+});
+
+// Touch: tap left half = left, right half = right
+canvas.addEventListener('touchstart', e => {
+  if (!running) return;
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  const rect  = canvas.getBoundingClientRect();
+  const tx    = touch.clientX - rect.left;
+  if (tx < canvas.width / 2) moveLeft();
+  else moveRight();
+}, { passive: false });
+
+// Mouse click support too
+canvas.addEventListener('click', e => {
+  if (!running) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx   = e.clientX - rect.left;
+  if (cx < canvas.width / 2) moveLeft();
+  else moveRight();
+});
+
+// ── Start / End ───────────────────────────────────────────────
+function startGame() {
+  startScr.style.display    = 'none';
+  gameOverScr.style.display = 'none';
+  // Ensure context is running (click already happened, so autoplay policy is satisfied)
+  getAudio();
+  initGame();
+  startMusic();
+  animId = requestAnimationFrame(loop);
+}
+
+function endGame() {
+  running = false;
+  cancelAnimationFrame(animId);
+  stopMusic();
+  playCrashSound();
+
+  // Draw final frame with tint
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const isNew = score > hiScore;
+  if (isNew) {
+    hiScore = score;
+    localStorage.setItem('wx_hi', hiScore);
+    bestEl.textContent = hiScore;
+  }
+
+  finalEl.textContent  = score;
+  newBestEl.style.display = isNew ? 'block' : 'none';
+  goDetail.textContent = isNew
+    ? `You beat the record! Best: ${hiScore}`
+    : `Best score: ${hiScore} — can you beat it?`;
+
+  gameOverScr.style.display = 'flex';
+}
+
+document.getElementById('startBtn').addEventListener('click',   startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('musicToggle').addEventListener('click', toggleMusic);
+
+// ── Audio unlock on first interaction (mobile Safari / Chrome autoplay policy) ──
+// Every touch/click/key: resume the context if it got suspended
+function unlockAudio() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+document.addEventListener('click',      unlockAudio);
+document.addEventListener('touchstart', unlockAudio);
+document.addEventListener('keydown', e => {
+  unlockAudio();
+  if (e.key === 'm' || e.key === 'M') toggleMusic();
+});
+</script>
+</body>
+</html>
