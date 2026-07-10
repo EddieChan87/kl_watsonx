@@ -295,6 +295,13 @@
       <button class="lb-btn-primary" id="lbRefresh">↺ Refresh</button>
       <button class="lb-btn-ghost"   id="lbClose">Close</button>
     </div>
+    <!-- Admin reset — hidden until secret code typed -->
+    <button id="adminResetBtn" style="display:none;background:none;border:1px solid #da1e28;
+      color:#da1e28;border-radius:4px;padding:7px 0;font-size:12px;font-weight:700;
+      font-family:inherit;cursor:pointer;width:100%;letter-spacing:.04em;transition:background .15s;">
+      🗑 Reset All Scores
+    </button>
+    <div id="adminStatus" style="display:none;font-size:11px;color:#8d8d8d;text-align:center"></div>
   </div>
 </div>
 
@@ -1112,6 +1119,84 @@ document.getElementById('lbRefresh').addEventListener('click', openLeaderboard);
 // Leaderboard modal — close
 document.getElementById('lbClose').addEventListener('click', () => {
   document.getElementById('lbModal').classList.add('hidden');
+  // Hide admin controls when closing
+  document.getElementById('adminResetBtn').style.display = 'none';
+  document.getElementById('adminStatus').style.display   = 'none';
+  adminUnlocked = false;
+  adminBuffer   = '';
+});
+
+// ── Admin reset (secret code: type "admin" while leaderboard is open) ──
+let adminBuffer   = '';
+let adminUnlocked = false;
+const ADMIN_CODE  = 'admin';   // ← change this to any secret word you like
+
+document.addEventListener('keydown', e => {
+  // Only active when leaderboard modal is open
+  if (document.getElementById('lbModal').classList.contains('hidden')) {
+    adminBuffer = '';
+    return;
+  }
+  adminBuffer += e.key.toLowerCase();
+  // Keep only last N chars (length of code)
+  if (adminBuffer.length > ADMIN_CODE.length) {
+    adminBuffer = adminBuffer.slice(-ADMIN_CODE.length);
+  }
+  if (adminBuffer === ADMIN_CODE) {
+    adminUnlocked = true;
+    adminBuffer   = '';
+    document.getElementById('adminResetBtn').style.display = 'block';
+    document.getElementById('adminStatus').style.display   = 'block';
+    document.getElementById('adminStatus').textContent     = '🔓 Admin unlocked — type "admin" to unlock';
+    document.getElementById('adminStatus').textContent     = '🔓 Admin mode — press Reset to wipe all scores';
+  }
+});
+
+// Admin reset button — two-click confirmation
+let adminResetConfirming = false;
+let adminResetTimer      = null;
+document.getElementById('adminResetBtn').addEventListener('click', async () => {
+  const btn      = document.getElementById('adminResetBtn');
+  const statusEl = document.getElementById('adminStatus');
+  if (!adminResetConfirming) {
+    adminResetConfirming = true;
+    btn.textContent      = '⚠️ Confirm — wipe ALL scores?';
+    btn.style.background = 'rgba(218,30,40,0.15)';
+    adminResetTimer = setTimeout(() => {
+      adminResetConfirming = false;
+      btn.textContent      = '🗑 Reset All Scores';
+      btn.style.background = 'none';
+    }, 4000);
+  } else {
+    clearTimeout(adminResetTimer);
+    adminResetConfirming = false;
+    btn.disabled         = true;
+    btn.textContent      = 'Resetting…';
+    statusEl.textContent = 'Wiping leaderboard…';
+    try {
+      const res = await fetch(LB_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': LB_API_KEY
+        },
+        body: JSON.stringify({ scores: [] })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      statusEl.textContent     = '✅ All scores cleared!';
+      btn.textContent          = '🗑 Reset All Scores';
+      btn.style.background     = 'none';
+      btn.disabled             = false;
+      adminUnlocked            = false;
+      document.getElementById('adminResetBtn').style.display = 'none';
+      setTimeout(openLeaderboard, 800);
+    } catch(e) {
+      statusEl.textContent = '⚠️ Reset failed — check connection.';
+      btn.textContent      = '🗑 Reset All Scores';
+      btn.style.background = 'none';
+      btn.disabled         = false;
+    }
+  }
 });
 
 // HUD leaderboard button
