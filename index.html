@@ -308,6 +308,11 @@
     <h2>Bob Dodge</h2>
     <div style="font-size:12px;color:#4589ff;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:-8px">watsonx Challenge</div>
     <div class="detail">Help Bob dodge the data bugs.<br>Survive as long as you can.<br><strong style="color:#fff">Highest score wins the prize! 🏆</strong></div>
+    <input id="playerNameInput" type="text" maxlength="20" placeholder="Enter your name to play…"
+      autocomplete="off"
+      style="background:#262626;border:1px solid #393939;border-radius:4px;color:#fff;
+             font-size:15px;font-family:inherit;padding:10px 12px;outline:none;
+             width:100%;max-width:260px;box-sizing:border-box;text-align:center;" />
     <button class="play-btn" id="startBtn">▶ Play as Bob</button>
     <div class="detail" style="font-size:11px;color:#525252">← → keys &nbsp;·&nbsp; tap left / right</div>
   </div>
@@ -319,21 +324,8 @@
     <div class="big" id="finalScore">0</div>
     <div class="new-best" id="newBest" style="display:none">🏆 NEW HIGH SCORE!</div>
     <div class="detail" id="goDetail"></div>
-
-    <!-- Name + submit inline (only shown when leaderboard is configured) -->
-    <div id="goSubmitArea" style="display:none;width:100%;max-width:260px;flex-direction:column;gap:8px">
-      <input id="playerNameInput" type="text" maxlength="20" placeholder="Enter your name…"
-        autocomplete="off"
-        style="background:#262626;border:1px solid #393939;border-radius:4px;color:#fff;
-               font-size:15px;font-family:inherit;padding:8px 10px;outline:none;width:100%;
-               box-sizing:border-box;" />
-      <button class="play-btn" id="nameSubmit" style="width:100%;padding:10px 0">
-        🏆 Submit &amp; See Leaderboard
-      </button>
-      <div id="nameStatus" style="font-size:11px;color:#8d8d8d;text-align:center;min-height:14px"></div>
-    </div>
-
-    <button class="play-btn" id="restartBtn" style="display:none">↺ Try Again</button>
+    <div id="goSubmitStatus" style="font-size:12px;color:#8d8d8d;text-align:center;min-height:16px"></div>
+    <button class="play-btn" id="restartBtn">↺ Play Again</button>
   </div>
 </div>
 
@@ -960,9 +952,20 @@ canvas.addEventListener('click', e => {
 
 // ── Start / End ───────────────────────────────────────────────
 function startGame() {
+  // Require a name before playing
+  const nameInput = document.getElementById('playerNameInput');
+  const name = nameInput.value.trim();
+  if (!name) {
+    nameInput.style.borderColor = '#fa4d56';
+    nameInput.focus();
+    setTimeout(() => nameInput.style.borderColor = '#393939', 1200);
+    return;
+  }
+  playerName = name;
+  localStorage.setItem('wx_name', name);
+
   startScr.style.display    = 'none';
   gameOverScr.style.display = 'none';
-  // Ensure context is running (click already happened, so autoplay policy is satisfied)
   getAudio();
   initGame();
   startMusic();
@@ -993,12 +996,19 @@ function endGame() {
     : `Best score: ${hiScore} — can you beat it?`;
 
   gameOverScr.style.display = 'flex';
-  // Show name input inline on the game-over card
-  setTimeout(() => showNamePrompt(score), 400);
+
+  // Auto-submit score silently
+  autoSubmitScore(score);
 }
 
-document.getElementById('startBtn').addEventListener('click',   startGame);
-document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', () => {
+  // Keep name, go back to start screen for next round
+  startScr.style.display    = 'flex';
+  gameOverScr.style.display = 'none';
+  // Pre-fill name so it's ready
+  document.getElementById('playerNameInput').value = playerName;
+});
 document.getElementById('musicToggle').addEventListener('click', toggleMusic);
 
 // ── Leaderboard (JSONbin.io backend) ──────────────────────────
@@ -1080,58 +1090,19 @@ async function openLeaderboard() {
   }
 }
 
-function showNamePrompt(finalScore) {
-  const submitArea = document.getElementById('goSubmitArea');
-  const restartBtn = document.getElementById('restartBtn');
-  const input      = document.getElementById('playerNameInput');
-  const status     = document.getElementById('nameStatus');
-  const submitBtn  = document.getElementById('nameSubmit');
-
-  if (LB_BIN_ID === 'PASTE_YOUR_BIN_ID_HERE') {
-    // Leaderboard not configured — just show Try Again
-    restartBtn.style.display = 'block';
-    return;
-  }
-
-  // Pre-fill saved name, reset state
-  input.value = playerName;
-  status.textContent = '';
-  submitBtn.disabled = false;
-  submitBtn.textContent = '🏆 Submit & See Leaderboard';
-
-  submitArea.style.display = 'flex';
-  restartBtn.style.display = 'none';
-  setTimeout(() => input.focus(), 50);
-}
-
-// Submit score — inline in game-over card
-document.getElementById('nameSubmit').addEventListener('click', async () => {
-  const input     = document.getElementById('playerNameInput');
-  const name      = input.value.trim();
-  const submitBtn = document.getElementById('nameSubmit');
-  const status    = document.getElementById('nameStatus');
-
-  if (!name) { input.focus(); return; }
-
-  submitBtn.disabled = true;
-  status.textContent = 'Submitting…';
-  playerName = name;
-  localStorage.setItem('wx_name', name);
-
+async function autoSubmitScore(finalScore) {
+  const statusEl = document.getElementById('goSubmitStatus');
+  if (LB_BIN_ID === 'PASTE_YOUR_BIN_ID_HERE' || !playerName) return;
+  statusEl.textContent = '📡 Submitting score…';
   try {
-    await submitScore(name, score);
-    status.textContent = '✅ Score submitted!';
-    // Hide submit area, show leaderboard modal with fresh scores
-    setTimeout(async () => {
-      document.getElementById('goSubmitArea').style.display = 'none';
-      document.getElementById('restartBtn').style.display = 'block';
-      await openLeaderboard();
-    }, 700);
+    await submitScore(playerName, finalScore);
+    statusEl.textContent = `✅ Score saved for ${playerName}`;
+    // Auto-open leaderboard after 1s
+    setTimeout(openLeaderboard, 1000);
   } catch(e) {
-    status.textContent = '⚠️ Submit failed — check your connection.';
-    submitBtn.disabled = false;
+    statusEl.textContent = '⚠️ Could not submit — check connection.';
   }
-});
+}
 
 // Leaderboard modal — refresh
 document.getElementById('lbRefresh').addEventListener('click', openLeaderboard);
@@ -1143,6 +1114,16 @@ document.getElementById('lbClose').addEventListener('click', () => {
 
 // HUD leaderboard button
 document.getElementById('lbBtn').addEventListener('click', openLeaderboard);
+
+// Pre-fill name from localStorage on page load
+const _savedName = localStorage.getItem('wx_name');
+if (_savedName) {
+  document.getElementById('playerNameInput').value = _savedName;
+}
+// Allow pressing Enter on the name field to start
+document.getElementById('playerNameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGame();
+});
 
 // ── Audio unlock on first interaction (mobile Safari / Chrome autoplay policy) ──
 // Every touch/click/key: resume the context if it got suspended
