@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Bob Dodge — Malaysia 2026 IBMer watsonx Challenge</title>
 <style>
-  /* ── Theme tokens ── */
+  /* ── Theme tokens (dark only) ── */
   :root {
     --bg:            #0a0a0a;
     --bg-canvas:     #111111;
@@ -27,30 +27,6 @@
     --footer:        #393939;
     --score-val:     #ffffff;
     --canvas-border: #262626;
-  }
-
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:            #f4f4f4;
-      --bg-canvas:     #ffffff;
-      --bg-card:       #ffffff;
-      --bg-input:      #f4f4f4;
-      --bg-music:      rgba(0,0,0,0.06);
-      --bg-music-hov:  rgba(0,0,0,0.12);
-      --bg-overlay:    rgba(255,255,255,0.93);
-      --bg-backdrop:   rgba(0,0,0,0.55);
-      --border:        #e0e0e0;
-      --border-subtle: #e8e8e8;
-      --border-mid:    #c6c6c6;
-      --border-strong: #c6c6c6;
-      --text:          #161616;
-      --text-muted:    #525252;
-      --text-dim:      #8d8d8d;
-      --text-td:       #393939;
-      --footer:        #a8a8a8;
-      --score-val:     #161616;
-      --canvas-border: #c6c6c6;
-    }
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -706,8 +682,7 @@ const COLORS = {
   trail:      'rgba(15,98,254,0.15)',
   bgStripe:   'rgba(15,98,254,0.03)',
   get bg()   { return getCSSVar('--bg-canvas'); },
-  get lane() { return window.matchMedia('(prefers-color-scheme: light)').matches
-                 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)'; },
+  lane:      'rgba(255,255,255,0.04)',
   get text() { return getCSSVar('--text'); },
 };
 
