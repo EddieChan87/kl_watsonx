@@ -6,12 +6,59 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Bob Dodge — Malaysia 2026 IBMer watsonx Challenge</title>
 <style>
+  /* ── Theme tokens ── */
+  :root {
+    --bg:            #0a0a0a;
+    --bg-canvas:     #111111;
+    --bg-card:       #161616;
+    --bg-input:      #262626;
+    --bg-music:      rgba(255,255,255,0.07);
+    --bg-music-hov:  rgba(255,255,255,0.13);
+    --bg-overlay:    rgba(0,0,0,0.88);
+    --bg-backdrop:   rgba(0,0,0,0.82);
+    --border:        #262626;
+    --border-subtle: #1a1a1a;
+    --border-mid:    #393939;
+    --border-strong: #333;
+    --text:          #ffffff;
+    --text-muted:    #8d8d8d;
+    --text-dim:      #525252;
+    --text-td:       #c6c6c6;
+    --footer:        #393939;
+    --score-val:     #ffffff;
+    --canvas-border: #262626;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:            #f4f4f4;
+      --bg-canvas:     #ffffff;
+      --bg-card:       #ffffff;
+      --bg-input:      #f4f4f4;
+      --bg-music:      rgba(0,0,0,0.06);
+      --bg-music-hov:  rgba(0,0,0,0.12);
+      --bg-overlay:    rgba(255,255,255,0.93);
+      --bg-backdrop:   rgba(0,0,0,0.55);
+      --border:        #e0e0e0;
+      --border-subtle: #e8e8e8;
+      --border-mid:    #c6c6c6;
+      --border-strong: #c6c6c6;
+      --text:          #161616;
+      --text-muted:    #525252;
+      --text-dim:      #8d8d8d;
+      --text-td:       #393939;
+      --footer:        #a8a8a8;
+      --score-val:     #161616;
+      --canvas-border: #c6c6c6;
+    }
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: #0a0a0a;
+    background: var(--bg);
     font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
-    color: #fff;
+    color: var(--text);
     height: 100dvh;
     display: flex;
     flex-direction: column;
@@ -27,19 +74,19 @@
     gap: 32px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: #8d8d8d;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: .1em;
   }
-  #hud span { color: #fff; font-weight: 700; font-size: 20px; display: block; margin-top: 2px; }
+  #hud span { color: var(--score-val); font-weight: 700; font-size: 20px; display: block; margin-top: 2px; }
   #hud .lbl { text-align: center; }
   #hud .best span { color: #f1c21b; }
 
   #resetBtn {
     background: none;
-    border: 1px solid #393939;
+    border: 1px solid var(--border-mid);
     border-radius: 4px;
-    color: #525252;
+    color: var(--text-dim);
     font-size: 10px;
     letter-spacing: .05em;
     padding: 2px 6px;
@@ -57,10 +104,10 @@
 
   /* ── Canvas ── */
   #canvas {
-    border: 2px solid #262626;
+    border: 2px solid var(--canvas-border);
     border-radius: 8px;
     display: block;
-    background: #111;
+    background: var(--bg-canvas);
     touch-action: none;
   }
 
@@ -68,7 +115,7 @@
   #controls {
     margin-top: 10px;
     font-size: 12px;
-    color: #525252;
+    color: var(--text-dim);
     text-align: center;
     letter-spacing: .04em;
   }
@@ -82,7 +129,7 @@
     align-items: center;
     justify-content: center;
     gap: 14px;
-    background: rgba(0,0,0,.88);
+    background: var(--bg-overlay);
     border-radius: 6px;
   }
   .overlay h2 {
@@ -92,8 +139,8 @@
     letter-spacing: -0.5px;
     text-align: center;
   }
-  .overlay .big { font-size: clamp(48px, 12vw, 80px); font-weight: 800; color: #fff; line-height: 1; }
-  .overlay .detail { font-size: 13px; color: #8d8d8d; text-align: center; max-width: 260px; line-height: 1.6; }
+  .overlay .big { font-size: clamp(48px, 12vw, 80px); font-weight: 800; color: var(--text); line-height: 1; }
+  .overlay .detail { font-size: 13px; color: var(--text-muted); text-align: center; max-width: 260px; line-height: 1.6; }
   .overlay .new-best { color: #f1c21b; font-weight: 700; font-size: 15px; }
 
   .play-btn {
@@ -118,7 +165,7 @@
   footer {
     margin-top: 14px;
     font-size: 11px;
-    color: #393939;
+    color: var(--footer);
     letter-spacing: .05em;
   }
 
@@ -127,10 +174,10 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid #333;
+    background: var(--bg-music);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    color: #8d8d8d;
+    color: var(--text-muted);
     font-size: 18px;
     line-height: 1;
     width: 36px;
@@ -142,13 +189,13 @@
     transition: background .15s, color .15s;
     user-select: none;
   }
-  #musicToggle:hover  { background: rgba(255,255,255,0.13); color: #fff; }
-  #musicToggle.muted  { color: #525252; }
+  #musicToggle:hover  { background: var(--bg-music-hov); color: var(--text); }
+  #musicToggle.muted  { color: var(--text-dim); }
 
   /* ── Leaderboard button in HUD ── */
   #lbBtn {
     background: none;
-    border: 1px solid #393939;
+    border: 1px solid var(--border-mid);
     border-radius: 4px;
     color: #f1c21b;
     font-size: 10px;
@@ -168,7 +215,7 @@
   .lb-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.82);
+    background: var(--bg-backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -179,8 +226,8 @@
 
   /* ── Modal card ── */
   .lb-card {
-    background: #161616;
-    border: 1px solid #262626;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 10px;
     width: 100%;
     max-width: 360px;
@@ -199,7 +246,7 @@
   }
   .lb-card .lb-status {
     font-size: 11px;
-    color: #525252;
+    color: var(--text-dim);
     text-align: center;
     min-height: 14px;
   }
@@ -208,37 +255,37 @@
   .lb-table { width: 100%; border-collapse: collapse; }
   .lb-table th {
     font-size: 10px;
-    color: #525252;
+    color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: .08em;
     padding: 0 4px 8px;
     text-align: left;
-    border-bottom: 1px solid #262626;
+    border-bottom: 1px solid var(--border);
   }
   .lb-table th:last-child { text-align: right; }
   .lb-table td {
     padding: 7px 4px;
     font-size: 13px;
-    border-bottom: 1px solid #1a1a1a;
-    color: #c6c6c6;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-td);
   }
-  .lb-table td:first-child { color: #525252; font-size: 11px; width: 28px; }
-  .lb-table td:last-child  { text-align: right; font-weight: 700; color: #fff; }
+  .lb-table td:first-child { color: var(--text-dim); font-size: 11px; width: 28px; }
+  .lb-table td:last-child  { text-align: right; font-weight: 700; color: var(--text); }
   .lb-table tr.lb-me td   { color: #4589ff; }
   .lb-table tr.lb-me td:last-child { color: #4589ff; }
   .lb-table tr:nth-child(1) td:first-child { color: #f1c21b; }
   .lb-table tr:nth-child(2) td:first-child { color: #a8a8a8; }
   .lb-table tr:nth-child(3) td:first-child { color: #c87941; }
-  .lb-empty { text-align: center; color: #525252; font-size: 13px; padding: 20px 0; }
+  .lb-empty { text-align: center; color: var(--text-dim); font-size: 13px; padding: 20px 0; }
 
   /* ── Name prompt ── */
   .lb-name-form { display: flex; flex-direction: column; gap: 10px; }
-  .lb-name-form label { font-size: 12px; color: #8d8d8d; }
+  .lb-name-form label { font-size: 12px; color: var(--text-muted); }
   .lb-name-form input {
-    background: #262626;
-    border: 1px solid #393939;
+    background: var(--bg-input);
+    border: 1px solid var(--border-mid);
     border-radius: 4px;
-    color: #fff;
+    color: var(--text);
     font-size: 15px;
     font-family: inherit;
     padding: 8px 10px;
@@ -247,7 +294,7 @@
     transition: border-color .15s;
   }
   .lb-name-form input:focus { border-color: #0f62fe; }
-  .lb-name-form input::placeholder { color: #525252; }
+  .lb-name-form input::placeholder { color: var(--text-dim); }
 
   /* ── Modal buttons row ── */
   .lb-btns { display: flex; gap: 8px; }
@@ -264,9 +311,9 @@
   }
   .lb-btn-primary { background: #0f62fe; color: #fff; }
   .lb-btn-primary:hover { background: #0353e9; }
-  .lb-btn-primary:disabled { background: #393939; color: #525252; cursor: default; }
-  .lb-btn-ghost { background: transparent; color: #8d8d8d; border-color: #393939; }
-  .lb-btn-ghost:hover { background: #262626; }
+  .lb-btn-primary:disabled { background: var(--border-mid); color: var(--text-dim); cursor: default; }
+  .lb-btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border-mid); }
+  .lb-btn-ghost:hover { background: var(--bg-input); }
 </style>
 </head>
 <body>
@@ -301,7 +348,7 @@
       font-family:inherit;cursor:pointer;width:100%;letter-spacing:.04em;transition:background .15s;">
       🗑 Reset All Scores
     </button>
-    <div id="adminStatus" style="display:none;font-size:11px;color:#8d8d8d;text-align:center"></div>
+    <div id="adminStatus" style="display:none;font-size:11px;color:var(--text-muted);text-align:center"></div>
   </div>
 </div>
 
@@ -312,28 +359,31 @@
 
   <!-- Start overlay -->
   <div class="overlay" id="startScreen">
-    <div style="font-size:52px;line-height:1">🤖</div>
+    <img src="Bob Icon.svg" alt="IBM Bob" style="width:90px;height:90px;object-fit:contain;" />
     <h2>Bob Dodge</h2>
     <div style="font-size:12px;color:#4589ff;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:-8px">watsonx Challenge</div>
     <div class="detail">Help Bob dodge the data bugs.<br>Survive as long as you can.<br><strong style="color:#fff">Highest score wins the prize! 🏆</strong></div>
-    <div class="detail" style="font-size:12px;color:#8d8d8d">Enter your name + Talent ID to play</div>
+    <div class="detail" style="font-size:12px;color:var(--text-muted)">Enter your name + Talent ID to play</div>
     <input id="playerNameInput" type="text" maxlength="30" placeholder="e.g. Eddie 104462"
       autocomplete="off"
-      style="background:#262626;border:1px solid #393939;border-radius:4px;color:#fff;
+      style="background:var(--bg-input);border:1px solid var(--border-mid);border-radius:4px;color:var(--text);
              font-size:15px;font-family:inherit;padding:10px 12px;outline:none;
              width:100%;max-width:260px;box-sizing:border-box;text-align:center;" />
     <button class="play-btn" id="startBtn">▶ Play as Bob</button>
-    <div class="detail" style="font-size:11px;color:#525252">← → keys &nbsp;·&nbsp; tap left / right</div>
+    <div class="detail" style="font-size:11px;color:var(--text-dim)">← → keys &nbsp;·&nbsp; tap left / right</div>
   </div>
 
   <!-- Game over overlay -->
   <div class="overlay" id="gameOverScreen" style="display:none">
-    <div style="font-size:40px;line-height:1">🤖💥</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;line-height:1">
+      <img src="Bob Icon.svg" alt="IBM Bob" style="width:64px;height:64px;object-fit:contain;" />
+      <span style="font-size:40px">💥</span>
+    </div>
     <h2>Bob Crashed!</h2>
     <div class="big" id="finalScore">0</div>
     <div class="new-best" id="newBest" style="display:none">🏆 NEW HIGH SCORE!</div>
     <div class="detail" id="goDetail"></div>
-    <div id="goSubmitStatus" style="font-size:12px;color:#8d8d8d;text-align:center;min-height:16px"></div>
+    <div id="goSubmitStatus" style="font-size:12px;color:var(--text-muted);text-align:center;min-height:16px"></div>
     <button class="play-btn" id="restartBtn">↺ Play Again</button>
   </div>
 </div>
@@ -570,6 +620,14 @@ function toggleMusic() {
   }
 }
 
+// ── Bob Icon image ──────────────────────────────────────────────
+const bobImg = new Image();
+let bobImgReady = false;
+bobImg.width  = 128;
+bobImg.height = 128;
+bobImg.onload = () => { bobImgReady = true; };
+bobImg.src = 'Bob Icon.svg';
+
 // ── Canvas setup ──────────────────────────────────────────────
 const canvas   = document.getElementById('canvas');
 const ctx      = canvas.getContext('2d');
@@ -633,6 +691,11 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   }
 });
 
+// Read bg/text colours from CSS tokens so they follow the system theme
+function getCSSVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 const COLORS = {
   player:     '#0f62fe',
   playerBody: '#0353e9',
@@ -641,10 +704,11 @@ const COLORS = {
   eyePupil:   '#0f62fe',
   obs:        ['#fa4d56','#ff832b','#be95ff','#08bdba'],
   trail:      'rgba(15,98,254,0.15)',
-  bg:         '#0a0a0a',
   bgStripe:   'rgba(15,98,254,0.03)',
-  lane:       'rgba(255,255,255,0.04)',
-  text:       '#ffffff',
+  get bg()   { return getCSSVar('--bg-canvas'); },
+  get lane() { return window.matchMedia('(prefers-color-scheme: light)').matches
+                 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)'; },
+  get text() { return getCSSVar('--text'); },
 };
 
 function initGame() {
@@ -738,75 +802,24 @@ function drawPlayer() {
   const cx = playerLane * LANE_W + LANE_W / 2;
   const cy = playerY + playerH / 2;
   const r  = playerW * 0.42;
+  const imgSize = r * 2.6;  // slightly larger than the circle radius so Bob fills the lane
 
   // Outer glow
   ctx.shadowColor = COLORS.playerGlow;
   ctx.shadowBlur  = 22;
 
-  // ── Bob's round body ──
-  ctx.fillStyle = COLORS.player;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
+  if (bobImgReady) {
+    // ── Bob Icon ──
+    ctx.drawImage(bobImg, cx - imgSize / 2, cy - imgSize / 2, imgSize, imgSize);
+  } else {
+    // ── Fallback: simple blue circle while image loads ──
+    ctx.fillStyle = COLORS.player;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.shadowBlur = 0;
-
-  // ── Visor band (dark strip across middle) ──
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - r*0.05, r*0.82, r*0.28, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // ── Eyes ──
-  const eyeOffX = r * 0.28;
-  const eyeY    = cy - r * 0.05;
-  const eyeR    = r * 0.16;
-  // whites
-  ctx.fillStyle = COLORS.eye;
-  ctx.beginPath(); ctx.arc(cx - eyeOffX, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + eyeOffX, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
-  // pupils
-  ctx.fillStyle = '#001d6c';
-  ctx.beginPath(); ctx.arc(cx - eyeOffX + 1, eyeY + 1, eyeR*0.52, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + eyeOffX + 1, eyeY + 1, eyeR*0.52, 0, Math.PI*2); ctx.fill();
-  // shine
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(cx - eyeOffX + eyeR*0.25, eyeY - eyeR*0.3, eyeR*0.22, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + eyeOffX + eyeR*0.25, eyeY - eyeR*0.3, eyeR*0.22, 0, Math.PI*2); ctx.fill();
-
-  // ── IBM "8-bar" logo on chest ──
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  const barW = r * 0.56, barH = r * 0.065, barX = cx - barW/2, barY0 = cy + r*0.28;
-  const gaps = [0, 1, 2, 3, 4, 5, 6, 7];
-  gaps.forEach((_, i) => {
-    // draw 3 bars with gaps (simplified IBM stripe)
-    if (i < 3) {
-      const by = barY0 + i * (barH * 2.4);
-      // left gap + right gap
-      ctx.fillRect(barX,              by, barW * 0.3, barH);
-      ctx.fillRect(barX + barW * 0.38, by, barW * 0.24, barH);
-      ctx.fillRect(barX + barW * 0.7,  by, barW * 0.3, barH);
-    }
-  });
-
-  // ── Antenna ──
-  ctx.strokeStyle = '#4589ff';
-  ctx.lineWidth   = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - r);
-  ctx.lineTo(cx, cy - r * 1.38);
-  ctx.stroke();
-  ctx.fillStyle = '#4589ff';
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 1.42, 4, 0, Math.PI*2);
-  ctx.fill();
-
-  // ── Tiny "BOB" label beneath ──
-  ctx.fillStyle = 'rgba(69,137,255,0.8)';
-  ctx.font      = `bold ${r * 0.32}px system-ui`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('BOB', cx, cy + r + 4);
 }
 
 // Obstacle icons — "data bugs" threatening Bob
@@ -1082,6 +1095,46 @@ function escHtml(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+let lbAutoRefreshTimer   = null;
+let lbCountdownTimer     = null;
+let lbCountdownSeconds   = 5;
+
+function lbSetStatus(prefix) {
+  document.getElementById('lbStatus').textContent = `${prefix} · refreshing in ${lbCountdownSeconds}s`;
+}
+
+function startLbCountdown(prefix) {
+  clearInterval(lbCountdownTimer);
+  lbCountdownSeconds = 5;
+  lbSetStatus(prefix);
+  lbCountdownTimer = setInterval(() => {
+    lbCountdownSeconds--;
+    if (lbCountdownSeconds <= 0) {
+      lbCountdownSeconds = 5;   // reset — actual refresh fires via lbAutoRefreshTimer
+    }
+    lbSetStatus(prefix);
+  }, 1000);
+}
+
+function stopLbTimers() {
+  clearInterval(lbAutoRefreshTimer);
+  clearInterval(lbCountdownTimer);
+  lbAutoRefreshTimer = null;
+  lbCountdownTimer   = null;
+}
+
+async function refreshLeaderboardData() {
+  if (LB_BIN_ID === 'PASTE_YOUR_BIN_ID_HERE') return;
+  try {
+    const scores = await fetchLeaderboard();
+    const prefix = `Top ${Math.min(scores.length, 10)} players`;
+    renderLeaderboard(scores);
+    startLbCountdown(prefix);
+  } catch(e) {
+    document.getElementById('lbStatus').textContent = '⚠️ Could not load scores. Check API key / Bin ID.';
+  }
+}
+
 async function openLeaderboard() {
   document.getElementById('lbModal').classList.remove('hidden');
   document.getElementById('lbStatus').textContent = 'Loading…';
@@ -1092,11 +1145,15 @@ async function openLeaderboard() {
   }
   try {
     const scores = await fetchLeaderboard();
-    document.getElementById('lbStatus').textContent = `Top ${Math.min(scores.length, 10)} players`;
+    const prefix = `Top ${Math.min(scores.length, 10)} players`;
     renderLeaderboard(scores);
+    startLbCountdown(prefix);
   } catch(e) {
     document.getElementById('lbStatus').textContent = '⚠️ Could not load scores. Check API key / Bin ID.';
   }
+  // Start 5-second auto-refresh (clear any existing one first)
+  stopLbTimers();
+  lbAutoRefreshTimer = setInterval(refreshLeaderboardData, 5000);
 }
 
 async function autoSubmitScore(finalScore) {
@@ -1119,6 +1176,8 @@ document.getElementById('lbRefresh').addEventListener('click', openLeaderboard);
 // Leaderboard modal — close
 document.getElementById('lbClose').addEventListener('click', () => {
   document.getElementById('lbModal').classList.add('hidden');
+  // Stop auto-refresh + countdown
+  stopLbTimers();
   // Hide admin controls when closing
   document.getElementById('adminResetBtn').style.display = 'none';
   document.getElementById('adminStatus').style.display   = 'none';
